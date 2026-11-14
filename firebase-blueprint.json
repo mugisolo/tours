@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "TripItinerary": {
+      "title": "TripItinerary",
+      "description": "A user-created Uganda safari and destination itinerary with ordered attraction stops.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the itinerary creator.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable name of the Uganda trip itinerary.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "stopIds": {
+          "type": "array",
+          "description": "Ordered list of attraction IDs included in the trip (max 25 stops)."
+        },
+        "totalDistanceKm": {
+          "type": "number",
+          "description": "Estimated road route distance in kilometers."
+        },
+        "daysCount": {
+          "type": "number",
+          "description": "Suggested number of travel days."
+        },
+        "notes": {
+          "type": "string",
+          "description": "User travel notes and permit reminders.",
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the itinerary was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the itinerary was last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "title",
+        "stopIds",
+        "totalDistanceKm",
+        "daysCount",
+        "notes",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserBookmark": {
+      "title": "UserBookmark",
+      "description": "A user's saved bookmark or travel log entry for a specific Ugandan attraction.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the bookmark owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "attractionId": {
+          "type": "string",
+          "description": "ID of the bookmarked Uganda attraction.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "personalNote": {
+          "type": "string",
+          "description": "Personal reminder or wildlife sighting note.",
+          "maxLength": 500
+        },
+        "visited": {
+          "type": "boolean",
+          "description": "Whether the user has visited this destination."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when bookmarked."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "attractionId",
+        "personalNote",
+        "visited",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/itineraries/{itineraryId}": {
+      "schema": {
+        "$ref": "#/entities/TripItinerary"
+      },
+      "description": "Stores user-created Uganda trip itineraries isolated by ownerId."
+    },
+    "/bookmarks/{bookmarkId}": {
+      "schema": {
+        "$ref": "#/entities/UserBookmark"
+      },
+      "description": "Stores user-saved attraction bookmarks and sighting notes isolated by ownerId."
+    }
+  }
+}

@@ -1,0 +1,179 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable Hardened Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Pillar 2 & 5: Validation Blueprint for TripItinerary (synced with firebase-blueprint.json)
+    function isValidTripItinerary(data) {
+      return data.keys().hasAll([
+        'ownerId',
+        'title',
+        'stopIds',
+        'totalDistanceKm',
+        'daysCount',
+        'notes',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'ownerId',
+        'title',
+        'stopIds',
+        'totalDistanceKm',
+        'daysCount',
+        'notes',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.ownerId is string &&
+      data.ownerId.size() >= 1 &&
+      data.ownerId.size() <= 128 &&
+      data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.ownerId == request.auth.uid &&
+      data.title is string &&
+      data.title.size() >= 1 &&
+      data.title.size() <= 120 &&
+      data.stopIds is list &&
+      data.stopIds.size() >= 1 &&
+      data.stopIds.size() <= 25 &&
+      data.stopIds[0] is string &&
+      data.stopIds[0].size() >= 1 &&
+      data.stopIds[0].size() <= 128 &&
+      data.totalDistanceKm is number &&
+      data.totalDistanceKm >= 0 &&
+      data.totalDistanceKm <= 50000 &&
+      data.daysCount is number &&
+      data.daysCount >= 1 &&
+      data.daysCount <= 60 &&
+      data.notes is string &&
+      data.notes.size() <= 1000 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint for UserBookmark (synced with firebase-blueprint.json)
+    function isValidUserBookmark(data) {
+      return data.keys().hasAll([
+        'ownerId',
+        'attractionId',
+        'personalNote',
+        'visited',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'ownerId',
+        'attractionId',
+        'personalNote',
+        'visited',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.ownerId is string &&
+      data.ownerId.size() >= 1 &&
+      data.ownerId.size() <= 128 &&
+      data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.ownerId == request.auth.uid &&
+      data.attractionId is string &&
+      data.attractionId.size() >= 1 &&
+      data.attractionId.size() <= 128 &&
+      data.attractionId.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.personalNote is string &&
+      data.personalNote.size() <= 500 &&
+      data.visited is bool &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    // Collection: /itineraries/{itineraryId}
+    match /itineraries/{itineraryId} {
+      allow get: if isSignedIn() && isValidId(itineraryId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(itineraryId) &&
+        isValidTripItinerary(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if (
+        isVerifiedUser() &&
+        isValidId(itineraryId) &&
+        isValidTripItinerary(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action: Update trip stops, title, or notes
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title',
+            'stopIds',
+            'totalDistanceKm',
+            'daysCount',
+            'notes',
+            'updatedAt'
+          ])
+        )
+      );
+
+      allow delete: if isVerifiedUser() && isValidId(itineraryId) && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /bookmarks/{bookmarkId}
+    match /bookmarks/{bookmarkId} {
+      allow get: if isSignedIn() && isValidId(bookmarkId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(bookmarkId) &&
+        isValidUserBookmark(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if (
+        isVerifiedUser() &&
+        isValidId(bookmarkId) &&
+        isValidUserBookmark(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().attractionId == existing().attractionId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action: Update personal sighting note or visited flag
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'personalNote',
+            'visited',
+            'updatedAt'
+          ])
+        )
+      );
+
+      allow delete: if isVerifiedUser() && isValidId(bookmarkId) && existing().ownerId == request.auth.uid;
+    }
+  }
+}

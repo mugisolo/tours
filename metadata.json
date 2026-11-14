@@ -1,0 +1,6 @@
+{
+  "name": "Pearl of Africa — Uganda Interactive Tourism Explorer",
+  "description": "Comprehensive interactive destination explorer for Uganda covering national parks, wildlife reserves, cultural heritage sites, adventure hubs, lakes, mountains, and sanctuaries with Leaflet clustering, 3D terrain, Google Drive sync, and live Gemini grounding.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
